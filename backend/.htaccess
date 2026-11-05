@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Permitir acceso a public
+RewriteRule ^public/ - [L]
+
+# Bloquear todo lo demás
+RewriteRule ^ - [F,L]

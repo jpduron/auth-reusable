@@ -1,0 +1,27 @@
+# Variables de entorno (¡NUNCA subas esto!)
+.env
+.env.local
+.env.production
+
+# Logs y archivos temporales
+/backend/src/Logs/
+/backend/src/Utils/email_log.txt
+*.log
+
+# IDEs y SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Si en el futuro usas Composer (aunque ahora no lo usas, es buena práctica)
+/vendor/
+composer.lock
+
+# Archivos subidos
+backend/public/assets/uploads/*
+!backend/public/assets/uploads/.gitkeep
+
+# Dependencias
+backend/vendor/
+frontend/vendor/

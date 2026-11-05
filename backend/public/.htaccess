@@ -1,0 +1,23 @@
+Options -Indexes
+
+RewriteEngine On
+
+# LINES TO FORCE APACHE TO PASS THE HEADER TO PHP 👇
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Bloquear archivos ocultos
+RewriteRule (^|/)\. - [F,L]
+
+# Archivos sensibles
+<FilesMatch "(^\.env|composer\.(json|lock)|package\.json)$">
+    Require all denied
+</FilesMatch>
+
+# Servir archivos reales
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Front Controller
+RewriteRule ^(.+)$ index.php?route=$1 [QSA,L]
