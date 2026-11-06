@@ -95,11 +95,11 @@ class AuthService {
                 'data' => [
                     'token' => $newToken,
                     'user' => [
-                        'id'              => (int) $user['id'],
-                        'nombre_completo' => $user['nombre_completo'],
-                        'correo'          => $user['correo'],
-                        'rol_id'          => (int) $user['rol_id'],
-                        'es_su'           => (bool) $user['es_su']
+                        'id'               => (int) $user['id'],
+                        'nombre_completo'  => $user['nombre_completo'],
+                        'correo'           => $user['correo'],
+                        'rol_id'           => (int) $user['rol_id'],
+                        'es_su'            => (bool) $user['es_su']
                     ]
                 ]
             ];

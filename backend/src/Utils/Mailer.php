@@ -3,14 +3,12 @@ declare(strict_types=1);
 
 namespace App\Utils;
 
-class Mailer
-{
+class Mailer {
     private string $apiKey;
     private string $fromEmail;
     private string $fromName;
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->apiKey = Env::get('RESEND_API_KEY', '');
         $this->fromEmail = Env::get('MAIL_FROM_ADDRESS', 'onboarding@resend.dev');
         $this->fromName = Env::get('MAIL_FROM_NAME', 'Mi Aplicación');
@@ -19,9 +17,8 @@ class Mailer
     /**
      * Envía un correo de verificación de cuenta
      */
-    public function sendVerificationEmail(string $toEmail, string $toName, string $token): bool
-    {
-        $verificationLink = Env::get('APP_URL') . "/verify-email?token={$token}";
+    public function sendVerificationEmail(string $toEmail, string $toName, string $token): bool {
+        $verificationLink = Env::get('FRONTEND_URL') . "/pages/verify-email.html?token={$token}";
         
         $subject = "Verifica tu cuenta - {$this->fromName}";
         $htmlBody = $this->getVerificationTemplate($toName, $verificationLink);
@@ -32,9 +29,8 @@ class Mailer
     /**
      * Envía un correo de recuperación de contraseña
      */
-    public function sendPasswordResetEmail(string $toEmail, string $toName, string $token): bool
-    {
-        $resetLink = Env::get('APP_URL') . "/reset-password?token={$token}";
+    public function sendPasswordResetEmail(string $toEmail, string $toName, string $token): bool {
+        $resetLink = Env::get('FRONTEND_URL') . "/pages/reset-password.html?token={$token}";
         
         $subject = "Recuperar tu contraseña - {$this->fromName}";
         $htmlBody = $this->getResetTemplate($toName, $resetLink);
@@ -45,8 +41,7 @@ class Mailer
     /**
      * Método privado que envía el correo usando la API de Resend vía cURL
      */
-    private function send(string $to, string $subject, string $htmlBody): bool
-    {
+    private function send(string $to, string $subject, string $htmlBody): bool {
         if (empty($this->apiKey) || strpos($this->apiKey, 're_') !== 0) {
             error_log("ERROR MAILER: RESEND_API_KEY no está configurada correctamente en .env");
             return false;
@@ -89,8 +84,7 @@ class Mailer
     // PLANTILLAS HTML (Para mantener el código limpio)
     // ==========================================
 
-    private function getVerificationTemplate(string $name, string $link): string
-    {
+    private function getVerificationTemplate(string $name, string $link): string {
         return "
             <html>
             <head><meta charset='UTF-8'></head>
@@ -109,8 +103,7 @@ class Mailer
         ";
     }
 
-    private function getResetTemplate(string $name, string $link): string
-    {
+    private function getResetTemplate(string $name, string $link): string {
         return "
             <html>
             <head><meta charset='UTF-8'></head>

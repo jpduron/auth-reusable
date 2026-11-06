@@ -1,134 +1,187 @@
 /**
- * =========================================
- * MÓDULO AUTH
- * =========================================
- * Maneja la lógica de autenticación: login, logout, verificación de sesión.
+ * Auth Module - Maneja toda la lógica de autenticación
+ * Usa el helper API para comunicarse con el backend
  */
-
-import { apiRequest } from './api.js';
-
-/**
- * Inicia sesión con email y contraseña.
- * 
- * @param {string} correo - Correo electrónico del usuario
- * @param {string} password - Contraseña en texto plano
- * @returns {Promise<object>} Datos del usuario autenticado
- */
-export async function login(correo, password) {
-    const response = await apiRequest('/login', {
-        method: 'POST',
-        body: { correo, password }
-    });
+const Auth = (() => {
     
-    // Guardamos los datos del usuario en sessionStorage (no localStorage por seguridad)
-    if (response.data) {
-        sessionStorage.setItem('usuario', JSON.stringify(response.data));
-        console.log('✅ Usuario guardado en sessionStorage:', response.data);
-    }
-    
-    return response;
-}
+    /**
+     * Guarda los datos del usuario en localStorage (sin información sensible)
+     */
+    const saveUserData = (user) => {
+        localStorage.setItem('user_data', JSON.stringify(user));
+    };
 
-/**
- * Cierra la sesión del usuario actual.
- */
-export async function logout() {
-    try {
-        await apiRequest('/logout', {
-            method: 'POST',
-            requireAuth: true
-        });
-    } catch (error) {
-        // Ignoramos errores, limpiamos la sesión local de todos modos
-        console.warn('Error al cerrar sesión en el servidor:', error);
-    } finally {
-        sessionStorage.removeItem('usuario');
-        //20260806 se actualiza el link al index
-        window.location.href = '/sitir/frontend/index.html';
-    }
-}
+    /**
+     * Obtiene los datos del usuario desde localStorage
+     */
+    const getUserData = () => {
+        const data = localStorage.getItem('user_data');
+        return data ? JSON.parse(data) : null;
+    };
 
-/**
- * Verifica si hay una sesión activa consultando al backend.
- * 
- * @returns {Promise<object|null>} Datos del usuario o null si no hay sesión
- */
-export async function checkSession() {
-    // 1. Primero intentar obtener del sessionStorage
-    const usuarioLocal = getCurrentUser();
-    if (usuarioLocal) {
-        console.log('✅ Usuario encontrado en sessionStorage:', usuarioLocal);
-        
-        // 2. Verificar con el backend que la sesión sigue válida
+    /**
+     * Limpia todos los datos de sesión
+     */
+    const clearSession = () => {
+        API.clearToken();
+        localStorage.removeItem('user_data');
+    };
+
+    /**
+     * LOGIN - Autentica al usuario y guarda el token
+     */
+    const login = async (correo, password) => {
         try {
-            const response = await apiRequest('/session', {
-                method: 'GET',
-                requireAuth: true
-            });
+            const response = await API.post('login', { correo, password });
             
-            if (response.data) {
-                sessionStorage.setItem('usuario', JSON.stringify(response.data));
-                return response.data;
+            if (response.data && response.data.token) {
+                API.setToken(response.data.token);
+                saveUserData(response.data.user);
+                return { success: true, user: response.data.user };
             }
+            
+            throw new Error('Respuesta inválida del servidor');
         } catch (error) {
-            console.warn('Sesión inválida en backend, limpiando sessionStorage');
-            sessionStorage.removeItem('usuario');
-            return null;
+            return { success: false, message: error.message };
         }
-        
-        return usuarioLocal;
-    }
-    
-    // 3. Si no hay en sessionStorage, intentar con el backend
-    try {
-        const response = await apiRequest('/session', {
-            method: 'GET',
-            requireAuth: true
-        });
-        
-        if (response.data) {
-            sessionStorage.setItem('usuario', JSON.stringify(response.data));
-            return response.data;
+    };
+
+    /**
+     * LOGOUT - Cierra la sesión y redirige al login
+     */
+    const logout = async () => {
+        try {
+            await API.post('logout');
+        } catch (error) {
+            // Ignoramos errores de logout, limpiamos sesión de todos modos
+            console.warn('Error al cerrar sesión:', error.message);
+        } finally {
+            clearSession();
+            window.location.href = '/proyecto/frontend/pages/login.html';
         }
-        return null;
-    } catch (error) {
-        sessionStorage.removeItem('usuario');
-        return null;
-    }
-}
+    };
 
-/**
- * Obtiene el usuario actual desde sessionStorage.
- * 
- * @returns {object|null} Datos del usuario o null
- */
-export function getCurrentUser() {
-    const userJson = sessionStorage.getItem('usuario');
-    if (!userJson) return null;
-    
-    try {
-        return JSON.parse(userJson);
-    } catch (error) {
-        sessionStorage.removeItem('usuario');
-        return null;
-    }
-}
+    /**
+     * REGISTER - Registra un nuevo usuario
+     */
+    const register = async (nombreCompleto, correo, password) => {
+        try {
+            const response = await API.post('register', {
+                nombre_completo: nombreCompleto,
+                correo,
+                password
+            });
+            return { success: true, message: response.mensaje };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
 
-/**
- * Verifica si el usuario tiene un rol específico.
- * 
- * @param {string|string[]} roles - Rol o array de roles permitidos
- * @returns {boolean}
- */
-export function hasRole(roles) {
-    const user = getCurrentUser();
-    if (!user) {
-        console.warn("⚠️ [hasRole] No hay usuario en sesión.");
-        return false;
-    }
-    
-    const rolesArray = Array.isArray(roles) ? roles : [roles];
-    console.log(`🔍 [hasRole] Verificando si "${user.rol}" está en`, rolesArray);
-    
-    return rolesArray.includes(user.rol);
-}
+    /**
+     * VERIFY EMAIL - Verifica el correo con el token del enlace
+     */
+    const verifyEmail = async (token) => {
+        try {
+            // Este endpoint usa GET con query parameter, necesitamos un helper especial
+            const url = `${API.getBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.mensaje || 'Error al verificar el correo');
+            }
+            
+            return { success: true, message: data.mensaje };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
+
+    /**
+     * FORGOT PASSWORD - Solicita el enlace de recuperación
+     */
+    const forgotPassword = async (correo) => {
+        try {
+            const response = await API.post('forgot-password', { correo });
+            return { success: true, message: response.mensaje };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
+
+    /**
+     * RESET PASSWORD - Restablece la contraseña con el token
+     */
+    const resetPassword = async (token, newPassword) => {
+        try {
+            const response = await API.post('reset-password', {
+                token,
+                password: newPassword
+            });
+            return { success: true, message: response.mensaje };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
+
+    /**
+     * ME - Obtiene los datos del usuario autenticado
+     */
+    const getMe = async () => {
+        try {
+            const response = await API.get('me');
+            if (response.data) {
+                saveUserData(response.data);
+                return { success: true, user: response.data };
+            }
+            throw new Error('No se pudieron obtener los datos del usuario');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
+
+    /**
+     * Verifica si el usuario está autenticado (tiene token válido)
+     */
+    const isAuthenticated = () => {
+        return !!API.getToken();
+    };
+
+    /**
+     * Protege una página: si no hay sesión, redirige al login
+     */
+    const requireAuth = async () => {
+        if (!isAuthenticated()) {
+            window.location.href = '/proyecto/frontend/pages/login.html';
+            return false;
+        }
+
+        // Verificar que el token siga siendo válido
+        const result = await getMe();
+        if (!result.success) {
+            clearSession();
+            window.location.href = '/proyecto/frontend/pages/login.html';
+            return false;
+        }
+
+        return true;
+    };
+
+    // API pública del módulo
+    return {
+        login,
+        logout,
+        register,
+        verifyEmail,
+        forgotPassword,
+        resetPassword,
+        getMe,
+        isAuthenticated,
+        requireAuth,
+        getUserData,
+        clearSession
+    };
+})();

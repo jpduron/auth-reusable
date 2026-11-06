@@ -58,7 +58,7 @@ class Token
             // estado_id = 1 means ACTIVO
             $stmt = $pdo->prepare("
                 SELECT id, nombre_completo, correo, clave_hash, 
-                estado_id, rol_id, es_su 
+                estado_id, rol_id, es_su, ultima_sesion_el
                 FROM usuarios 
                 WHERE api_token = :token 
                 AND estado_id = 1 
