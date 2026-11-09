@@ -95,52 +95,40 @@ class Router {
     }
 
     /**
-     * Maneja todas las operaciones CRUD de usuarios
-     * Combina el recurso + método HTTP para decidir la acción
+     * Maneja todas las operaciones CRUD de usuarios con permisos granulares
      */
-    private static function handleUsuarios(Database $database, ?string $id, string $httpMethod): void {
-        // 1. Verificar permisos: Solo ADMIN o Super Usuario
-        Token::requirePermission('usuarios', 'acceso');
-
-        // 2. Dependency Injection Chain
+    private static function handleUsuarios(Database $database, ?string $id, string $httpMethod): void 
+    {
+        // Dependency Injection Chain
         $pdo = $database->getConnection();
         $model = new \App\Models\Usuario($pdo);
         $service = new \App\Services\UsuarioService($model);
         $controller = new \App\Controllers\UsuarioController($service);
 
-        // 3. Routing interno basado en método HTTP y presencia de ID
-        match (true) {
-            // GET /usuarios → Listar todos
-            ($httpMethod === 'GET' && $id === null) => function() use ($database, $controller) {
-                Token::requirePermission('usuarios', 'leer');
+        // Verificar permisos según la acción
+        if ($httpMethod === 'GET') {
+            \App\Utils\Token::requirePermission('usuarios', 'leer');
+            
+            if ($id === null) {
                 $controller->listar();
-            },
-            
-            // GET /usuarios/5 → Obtener uno
-            ($httpMethod === 'GET' && $id !== null) => function() use ($database, $controller) {
-                Token::requirePermission('usuarios', 'leer');
+            } else {
                 $controller->obtener((int) $id);
-            },
-            
-            // POST /usuarios → Crear nuevo
-            ($httpMethod === 'POST' && $id === null) => function() use ($database, $controller) {
-                Token::requirePermission('usuarios', 'crear');
-                $controller->crear();
-            },
-            
-            // PUT /usuarios/5 → Actualizar
-            ($httpMethod === 'PUT' && $id !== null) => function() use ($database, $controller) {
-                Token::requirePermission('usuarios', 'actualizar');
-                $controller->actualizar((int) $id);
-            },
-
-            // DELETE /usuarios/5 → Soft delete
-            ($httpMethod === 'DELETE' && $id !== null) => function() use ($database, $controller) {
-                Token::requirePermission('usuarios', 'eliminar');
-                $controller->eliminar((int) $id);
-            },
-            
-            default => Response::error("Método no permitido para esta ruta", 405)
-        };
+            }
+        } 
+        elseif ($httpMethod === 'POST' && $id === null) {
+            \App\Utils\Token::requirePermission('usuarios', 'crear');
+            $controller->crear();
+        } 
+        elseif ($httpMethod === 'PUT' && $id !== null) {
+            \App\Utils\Token::requirePermission('usuarios', 'actualizar');
+            $controller->actualizar((int) $id);
+        } 
+        elseif ($httpMethod === 'DELETE' && $id !== null) {
+            \App\Utils\Token::requirePermission('usuarios', 'eliminar');
+            $controller->eliminar((int) $id);
+        } 
+        else {
+            \App\Utils\Response::error("Método no permitido para esta ruta", 405);
+        }
     }
 }

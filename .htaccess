@@ -1,21 +1,21 @@
 # =========================================
-# CONFIGURACIÓN DE SEGURIDAD Y RUTAS
+# CONFIGURACIÓN DE SEGURIDAD Y RUTAS (RAÍZ)
 # =========================================
 
-# 1. Deshabilitar el listado de directorios (Evita el error 403 y protege la estructura)
+# 1. Proteger el listado de directorios
 Options -Indexes
 
-# 2. Activar el motor de reescritura de URLs
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /proyecto/
 
-    # 3. Si la petición es exactamente la raíz (/segr/), redirigir al frontend
-    RewriteRule ^$ frontend/ [L]
+    # 2. Si es la raíz exacta, redirigir al login del frontend
+    RewriteRule ^$ frontend/pages/login.html [R=301,L]
 
-    # 4. Si alguien intenta acceder a /segr/backend, redirigirlo a la carpeta pública
-    RewriteRule ^backend/?$ backend/public/ [L]
+    # 3. Si alguien escribe /backend, redirigirlo a /backend/public/
+    RewriteRule ^backend$ backend/public/ [R=301,L]
 
-    # 5. Redirigir cualquier petición que empiece con backend/ hacia backend/public/
-    # Esto asegura que las llamadas a la API funcionen sin exponer la estructura interna
+    # 4. Cualquier cosa que empiece con backend/ va a backend/public/
+    # (Ej: /backend/login -> /backend/public/login)
     RewriteRule ^backend/(.*)$ backend/public/$1 [L]
 </IfModule>
