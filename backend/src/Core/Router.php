@@ -47,7 +47,7 @@ class Router {
             
             // --- USUARIOS (CRUD) ---
             'usuarios'        => self::handleUsuarios($database, $id, $httpMethod),
-            
+            'catalogos' => self::handleCatalogos($database, $id),
             default => Response::error("Ruta no encontrada", 404)
         };
     }
@@ -97,8 +97,7 @@ class Router {
     /**
      * Maneja todas las operaciones CRUD de usuarios con permisos granulares
      */
-    private static function handleUsuarios(Database $database, ?string $id, string $httpMethod): void 
-    {
+    private static function handleUsuarios(Database $database, ?string $id, string $httpMethod): void {
         // Dependency Injection Chain
         $pdo = $database->getConnection();
         $model = new \App\Models\Usuario($pdo);
@@ -129,6 +128,28 @@ class Router {
         } 
         else {
             \App\Utils\Response::error("Método no permitido para esta ruta", 405);
+        }
+    }
+
+    /**
+     * Maneja las operaciones de catálogos
+     */
+    private static function handleCatalogos(Database $database, ?string $nombre): void 
+    {
+        Request::requireMethod('GET');
+        
+        // Los catálogos son de solo lectura, no requieren permisos granulares
+        // Solo requieren estar autenticado (ya validado por el middleware arriba)
+        
+        $pdo = $database->getConnection();
+        $model = new \App\Models\Catalogo($pdo);
+        $service = new \App\Services\CatalogoService($model);
+        $controller = new \App\Controllers\CatalogoController($service);
+
+        if ($nombre === null) {
+            $controller->listarTodos();
+        } else {
+            $controller->obtener($nombre);
         }
     }
 }

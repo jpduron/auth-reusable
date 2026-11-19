@@ -21,6 +21,7 @@ const Usuarios = (() => {
         
         // Cargar datos
         cargarUsuarios();
+        cargarCatalogos();
 
         // Listeners
         document.getElementById('btnLogout').addEventListener('click', () => Auth.logout());
@@ -245,6 +246,59 @@ const Usuarios = (() => {
         alert.textContent = mensaje;
         alert.classList.remove('d-none');
         setTimeout(() => alert.classList.add('d-none'), 5000);
+    };
+
+    // Cargar catálogos desde la API y llenar los selects
+    const cargarCatalogos = async () => {
+        try {
+            // Verificar si ya tenemos los catálogos en caché (menos de 1 hora)
+            const cacheExiste = localStorage.getItem('catalogos_cache');
+            const cacheTimestamp = localStorage.getItem('catalogos_timestamp');
+            const unaHora = 60 * 60 * 1000; // 1 hora en milisegundos
+
+            if (cacheExiste && cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < unaHora) {
+                const catalogos = JSON.parse(cacheExiste);
+                llenarSelects(catalogos);
+                return;
+            }
+
+            // Si no hay caché válida, pedir al servidor
+            const response = await API.get('catalogos');
+            
+            if (response.data) {
+                // Guardar en caché
+                localStorage.setItem('catalogos_cache', JSON.stringify(response.data));
+                localStorage.setItem('catalogos_timestamp', Date.now().toString());
+                
+                llenarSelects(response.data);
+            }
+        } catch (error) {
+            console.error('Error al cargar catálogos:', error.message);
+            // Fallback: dejar los selects vacíos o con valores por defecto
+        }
+    };
+
+    // Llenar los selects con los datos de los catálogos
+    const llenarSelects = (catalogos) => {
+        // Llenar select de Roles
+        const selectRol = document.getElementById('rol_id');
+        selectRol.innerHTML = ''; // Limpiar opciones existentes
+        catalogos.roles.forEach(rol => {
+            const option = document.createElement('option');
+            option.value = rol.id;
+            option.textContent = rol.nombre;
+            selectRol.appendChild(option);
+        });
+
+        // Llenar select de Estados
+        const selectEstado = document.getElementById('estado_id');
+        selectEstado.innerHTML = ''; // Limpiar opciones existentes
+        catalogos.estados.forEach(estado => {
+            const option = document.createElement('option');
+            option.value = estado.id;
+            option.textContent = estado.nombre;
+            selectEstado.appendChild(option);
+        });
     };
 
     // API Pública
